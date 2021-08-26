@@ -2,26 +2,18 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.nio.charset.StandardCharsets;
 
 import javax.swing.*;
-import javax.xml.parsers.DocumentBuilderFactory;
 
 class Main {
     JFrame window = new JFrame("ABCBlocks");
     Canvas canvas = new Canvas();
-    char BoardArray[][] = {{'A','B','C','D'},{'E','F','G','H'},{'I','J','K','N'}};
+    char BoardArray[][] = {{'A','B','C','D'},{'E','F','G','H'},{'I','J','K',' '}};
     Graphics2D g2d;
     Point selectedBlock;
     Point mouseClickLocation;
@@ -30,16 +22,18 @@ class Main {
     int movecount = 0;
     long playtime = 0,starttime = System.currentTimeMillis();
     Main() {
-        window.setBounds(100,100,401,301);
+        window.setBounds(100,100,401,321);
         window.setResizable(false);
+        window.setLayout(null);
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         canvas.setBounds(0,0,400,300);
         window.add(canvas);
-        window.setUndecorated(true);
         window.setVisible(true);   
+
         window.getContentPane().setBackground(Color.white);
         g2d = (Graphics2D) canvas.getGraphics();
-        //randommap();
+        
+        
         updateMap();
         
         window.addMouseListener(new MouseListener() {
@@ -59,11 +53,16 @@ class Main {
             public void mouseReleased(MouseEvent e) {
                 if (nextBlock != null) {
                     BoardArray[nextBlock.y][nextBlock.x] = BoardArray[selectedBlock.y][selectedBlock.x];
-                    BoardArray[selectedBlock.y][selectedBlock.x] = 'N';
+                    BoardArray[selectedBlock.y][selectedBlock.x] = ' ';
+                    movecount++;
                 }
                 updateMap();
+                saveGame();
                 if (checkwin()) {
                     System.out.println("You Win");
+                    randommap();
+                    saveGame();
+                    JOptionPane.showMessageDialog(null, "You Win " + (playtime + millis())/1000 + " seconds " + movecount + " Move");
                     System.exit(0);
                 }
             }
@@ -87,7 +86,10 @@ class Main {
             public void mouseMoved(MouseEvent e) {
             }
         });
-        saveGame();
+        if (!loadGame()) {
+            randommap();
+        }
+        updateMap();
     }
     private void moveBlock(int y,int x,int offsetX,int offsetY) {
         switch (CheckAvilableMove(y, x)) {
@@ -127,32 +129,30 @@ class Main {
         g2d.drawString(BoardArray[y][x] + "", (35 + (x*100)) + offsetX, (65 + (y*100)) + offsetY);
         if (Math.abs(offsetX) < 50 && Math.abs(offsetY) < 50) {
             nextBlock = null;
-            System.out.println("NOT SET");
         }
     }
     private char CheckAvilableMove(int y,int x) { 
-        System.out.println(y + "," + x);
         if(x-1 >= 0) {
-            if (BoardArray[y][x-1] == 'N')
+            if (BoardArray[y][x-1] == ' ')
             return 'L';
         }
         if(x+1 <= 3) {
-            if (BoardArray[y][x+1] == 'N')
+            if (BoardArray[y][x+1] == ' ')
             return 'R';
         }
         if(y-1 >= 0) {
-            if (BoardArray[y-1][x] == 'N')
+            if (BoardArray[y-1][x] == ' ')
             return 'U';
         }
         if(y+1 <= 2) {
-            if (BoardArray[y+1][x] == 'N')
+            if (BoardArray[y+1][x] == ' ')
             return 'D';
         }
         return '0';   
         
     }
     private boolean checkwin() {
-        char BoardarrayWin[][] = { {'A','B','C','D'},{'E','F','G','H'},{'I','J','K','N'}};
+        char BoardarrayWin[][] = { {'A','B','C','D'},{'E','F','G','H'},{'I','J','K',' '}};
         for (int y =0;y < 3;y++) {
             for (int x =0;x < 4;x++) {
                 if (BoardArray[y][x] != BoardarrayWin[y][x])return false;
@@ -171,11 +171,9 @@ class Main {
                 g2d.fillRect(x*100, y*100, 100, 100);
                 g2d.setColor(Color.black);
                 g2d.drawRect(x*100, y*100, 100, 100);
-                if (BoardArray[y][x] == 'N') {
-                    g2d.drawString("",35 + (x*100), 65 + (y*100));
-                }else {
+                
                     g2d.drawString(BoardArray[y][x] + "",35 + (x*100), 65 + (y*100));
-                }
+                
             }
         }
     }
@@ -195,7 +193,7 @@ class Main {
                 }
             }
         }
-        BoardArray[2][3] = 'N';
+        BoardArray[2][3] = ' ';
     }
     private char[] removeArray(char[] inputarray,int indextoremove) {
         if (inputarray.length > 0) {
@@ -216,13 +214,49 @@ class Main {
     }
     private void saveGame() {
         try {
-            String data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ABCBlockMAP><information><GameVersion>" + gameversion + "</GameVersion><PlayTime>" + (playtime + millis()) +"</PlayTime><MoveCount>" + movecount + "</MoveCount></information><Map><Row1>" + BoardArray[0][0] + BoardArray[0][1] + BoardArray[0][2] + BoardArray[0][3] + "</Row1><Row2>" +  BoardArray[1][0] + BoardArray[1][1] + BoardArray[1][2] + BoardArray[1][3] + "</Row2><Row3>"+  BoardArray[2][0] + BoardArray[2][1] + BoardArray[2][2] + BoardArray[2][3] + "</Row3></Map></ABCBlockMAP>";
+            String data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<ABCBlockMAP>\n  <information>\n    <GameVersion>" + gameversion + "</GameVersion>\n    <PlayTime>" + (playtime + millis()) +"</PlayTime>\n    <MoveCount>" + movecount + "</MoveCount>\n  </information>\n  <Map>\n    <Row1>" + BoardArray[0][0] + BoardArray[0][1] + BoardArray[0][2] + BoardArray[0][3] + "</Row1>\n    <Row2>" +  BoardArray[1][0] + BoardArray[1][1] + BoardArray[1][2] + BoardArray[1][3] + "</Row2>\n    <Row3>"+  BoardArray[2][0] + BoardArray[2][1] + BoardArray[2][2] + BoardArray[2][3] + "</Row3>\n  </Map>\n</ABCBlockMAP>";
             FileOutputStream fout = new FileOutputStream("gamesave.xml");
             fout.write(data.getBytes(StandardCharsets.UTF_8));
             fout.close();
          } catch (Exception e) {
             e.printStackTrace();
          }
+    }
+    private boolean loadGame() {
+        try {
+            File inputFile = new File("gamesave.xml");
+            String alline = "";
+            try (BufferedReader br = new BufferedReader(new FileReader(inputFile))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                   alline += line;
+                }
+            }
+            this.gameversion = Integer.parseInt(alline.substring(alline.indexOf("<GameVersion>") + 13,alline.indexOf("</GameVersion>")));
+            this.playtime = Integer.parseInt(alline.substring(alline.indexOf("<PlayTime>") + 10,alline.indexOf("</PlayTime>")));
+            this.movecount = Integer.parseInt(alline.substring(alline.indexOf("<MoveCount>") + 11,alline.indexOf("</MoveCount>")));
+            String row = alline.substring(alline.indexOf("<Row1>") + 6,alline.indexOf("</Row1")) + alline.substring(alline.indexOf("<Row2>") + 6,alline.indexOf("</Row2")) + alline.substring(alline.indexOf("<Row3>") + 6,alline.indexOf("</Row3"));
+            System.out.println(playtime + ", " + movecount);
+            System.out.println(row);
+            int rl = 0;
+            for (int y = 0;y < 3;y++) {
+                for (int x = 0;x < 4;x++) {
+                    BoardArray[y][x] = row.charAt(rl);
+                    rl++;
+                }
+            }
+            /*
+            NodeList nList = ;
+            
+            System.out.println("----------------------------");
+            System.out.println(nList.getLength());
+            System.out.println(nList.item(0));
+            */
+            return true;
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
+         return false;
     }
     public static void main(String[] args) {
         new Main();
