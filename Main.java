@@ -2,8 +2,21 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 
 import javax.swing.*;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 class Main {
     JFrame window = new JFrame("ABCBlocks");
@@ -13,6 +26,9 @@ class Main {
     Point selectedBlock;
     Point mouseClickLocation;
     Point nextBlock;
+    int gameversion = 3;
+    int movecount = 0;
+    long playtime = 0,starttime = System.currentTimeMillis();
     Main() {
         window.setBounds(100,100,401,301);
         window.setResizable(false);
@@ -71,6 +87,7 @@ class Main {
             public void mouseMoved(MouseEvent e) {
             }
         });
+        saveGame();
     }
     private void moveBlock(int y,int x,int offsetX,int offsetY) {
         switch (CheckAvilableMove(y, x)) {
@@ -194,8 +211,18 @@ class Main {
         }
         return new char[0];
     }
+    private long millis() {
+        return System.currentTimeMillis() - starttime;
+    }
     private void saveGame() {
-        
+        try {
+            String data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ABCBlockMAP><information><GameVersion>" + gameversion + "</GameVersion><PlayTime>" + (playtime + millis()) +"</PlayTime><MoveCount>" + movecount + "</MoveCount></information><Map><Row1>" + BoardArray[0][0] + BoardArray[0][1] + BoardArray[0][2] + BoardArray[0][3] + "</Row1><Row2>" +  BoardArray[1][0] + BoardArray[1][1] + BoardArray[1][2] + BoardArray[1][3] + "</Row2><Row3>"+  BoardArray[2][0] + BoardArray[2][1] + BoardArray[2][2] + BoardArray[2][3] + "</Row3></Map></ABCBlockMAP>";
+            FileOutputStream fout = new FileOutputStream("gamesave.xml");
+            fout.write(data.getBytes(StandardCharsets.UTF_8));
+            fout.close();
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
     }
     public static void main(String[] args) {
         new Main();
